@@ -43,6 +43,25 @@ void draw_week(WINDOW ** days, int week_offset, int selected) {
 	return;
 }
 
+void draw_main_window(WINDOW ** mainwin) {
+	int xmax, ymax;
+	getmaxyx(stdscr, ymax, xmax);
+	*mainwin = newwin(7*5, xmax*(3/4), 0, xmax/4+1);
+	refresh();
+	box(*mainwin, 0, 0);
+	draw_main_window_text(mainwin);
+}
+
+void draw_main_window_text(WINDOW ** mainwin){
+	char now_string[50];
+	// time_t yyy = time(NULL);
+	// struct tm *yyyy = localtime(&yyy);
+	days_from_today(now_string, 50, 0);
+	// strftime(now_string, 50, "%A %e %B, %Y", yyyy);
+	mvwprintw(*mainwin, 0, 1, now_string);
+	wrefresh(*mainwin);
+}
+
 int main() {
 
 	time_t today_raw;
@@ -69,23 +88,26 @@ int main() {
 	selected = week_offset;
 	draw_week(days, week_offset, selected);
 
-	mainwin = newwin(7*5, xmax*(3/4), 0, xmax/4+1);
-	refresh();
-	box(mainwin, 0, 0);
-	char now_string[50];
-	// time_t yyy = time(NULL);
-	// struct tm *yyyy = localtime(&yyy);
-	days_from_today(now_string, 50, 0);
-	// strftime(now_string, 50, "%A %e %B, %Y", yyyy);
-	mvwprintw(mainwin, 0, 1, now_string);
-	wrefresh(mainwin);
+	draw_main_window(&mainwin);
+	// mainwin = newwin(7*5, xmax*(3/4), 0, xmax/4+1);
+	// refresh();
+	// box(mainwin, 0, 0);
+	// char now_string[50];
+	// // time_t yyy = time(NULL);
+	// // struct tm *yyyy = localtime(&yyy);
+	// days_from_today(now_string, 50, 0);
+	// // strftime(now_string, 50, "%A %e %B, %Y", yyyy);
+	// mvwprintw(mainwin, 5, 5, "tsfdsfdfsdsfdsfdsfdsfdsfdsfdest");
+	// wrefresh(mainwin);
+	// wrefresh(mainwin);
+	
 
 	while (1) {
 		char c = getch();
 		if (c == 'q') {
 			break;
 		}
-		if (c >= '1' && c <= '7') {
+		else if (c >= '1' && c <= '7') {
 			selected = c - 49;
 			draw_week(days, week_offset, selected);
 			refresh();
