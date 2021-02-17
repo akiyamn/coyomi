@@ -1,4 +1,4 @@
 all: main
 
 main:
-	gcc -Wall -lncursesw  main.c -o curses
+	gcc -g -Wall -lncursesw  main.c -o curses

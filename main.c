@@ -1,21 +1,24 @@
 #include <stdio.h>
+#include <string.h>
 #include <locale.h>
 #include <stdlib.h>
 #include <time.h>
 #include <ncurses.h>
 
-void days_from_today(char *buf, size_t buf_size, int days_offset, int verbose) {
+void days_from_today(char *buffer, size_t buf_size, int days_offset, int verbose) {
 	time_t rawtime;
 	struct tm *newtime;
    	time(&rawtime);
 	rawtime += days_offset * 24 * 60 * 60;
 	newtime = localtime(&rawtime);
 	if (verbose) {
-		strftime(buf, buf_size, "%A %e %B, %Y", newtime);
+		strftime(buffer, buf_size, "%A %e %B, %Y", newtime);
+	} else {
+		strftime(buffer, buf_size, "%A %e %b", newtime);
 	}
-	strftime(buf, buf_size, "%A %e %b", newtime);
 	
 }
+
 
 void draw_week_names(WINDOW ** days, int week_offset, int selected) {
 	for (int i = 0; i < 7; i++){
@@ -44,10 +47,7 @@ void draw_week(WINDOW ** days, int week_offset, int selected) {
 
 void draw_main_window_text(WINDOW ** mainwin, int week_offset, int selected){
 	char now_string[50];
-	// time_t yyy = time(NULL);
-	// struct tm *yyyy = localtime(&yyy);
 	days_from_today(now_string, 50, selected-week_offset, true);
-	// strftime(now_string, 50, "%A %e %B, %Y", yyyy);
 	box(*mainwin, 0, 0);
 	mvwprintw(*mainwin, 0, 1, now_string);
 	wrefresh(*mainwin);
@@ -60,6 +60,31 @@ void draw_main_window(WINDOW ** mainwin, int week_offset, int selected) {
 	refresh();
 	box(*mainwin, 0, 0);
 	draw_main_window_text(mainwin, week_offset, selected);
+}
+
+int read_day(char *buffer, size_t buf_size, int relative){
+	FILE *fp;
+	char file_name[50];
+	time_t rawtime;
+	struct tm *newtime;
+   	time(&rawtime);
+	rawtime += relative * 24 * 60 * 60;
+	newtime = localtime(&rawtime);
+	strftime(file_name, 50, "entries/%F.md", newtime);
+	if (fp = fopen(file_name, "r")) {
+		int i = 0;
+		char c;
+		while (i < buf_size) {
+			c = fgetc(fp);
+			if (feof(fp)) {
+				break;
+			}
+			buffer[i++] = c;
+		}
+		fclose(fp);
+		return 1;
+	}
+	return 0;
 }
 
 int main() {
@@ -84,11 +109,15 @@ int main() {
 
 	WINDOW * days[7];
 	WINDOW * mainwin;
+	char text[5000];
 
 	selected = week_offset;
 	draw_week(days, week_offset, selected);
 
 	draw_main_window(&mainwin, week_offset, selected);
+	read_day(text, 5000, selected-week_offset);
+	mvwprintw(mainwin, 1, 2, text);
+	wrefresh(mainwin);
 
 	while (1) {
 		char c = getch();
@@ -98,7 +127,13 @@ int main() {
 		else if (c >= '1' && c <= '7') {
 			selected = c - 49;
 			draw_week_names(days, week_offset, selected);
-			draw_main_window_text(&mainwin, week_offset, selected);
+			draw_main_window(&mainwin, week_offset, selected);
+			if (read_day(text, 5000, selected-week_offset)){
+				mvwprintw(mainwin, 1, 2, text);
+			} else {
+				mvwprintw(mainwin, 1, 2, "Empty.");
+			}
+			wrefresh(mainwin);
 		}
 	}
 
