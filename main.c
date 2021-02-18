@@ -1,7 +1,10 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <locale.h>
 #include <time.h>
+#include <unistd.h> 
+#include <sys/wait.h>
 #include <ncurses.h>
 
 #define DAYS_IN_WEEK 7
@@ -11,6 +14,10 @@
 #define SECONDS_IN_DAY 86400
 #define LAYOUT_X_RATIO 0.25
 #define MAIN_PADDING 2
+
+// Will hard code these for now...
+#define TERMINAL "st"
+#define EDITOR "vim"
 
 /*
 	Returns num_of_days to the time_t input given.
@@ -116,15 +123,22 @@ void draw_main_window(WINDOW ** mainwin, time_t selected) {
 }
 
 /*
+	Creates the file path and name for a given time and stores it in the filename buffer
+*/
+void date_filename(char *filename, time_t time) {
+	struct tm *time_obj;
+	time_obj = localtime(&time);
+	strftime(filename, DAY_NAME_SIZE, "entries/%F.md", time_obj);
+}
+
+/*
 	Reads a given day's entry data from file and puts it into the given buffer (given the buffer's size).
 	Returns true on success and false on failure.
 */
 int read_day(char *buffer, size_t buf_size, time_t selected){
 	FILE *fp;
 	char file_name[DAY_NAME_SIZE];
-	struct tm *time_obj;
-	time_obj = localtime(&selected);
-	strftime(file_name, DAY_NAME_SIZE, "entries/%F.md", time_obj);
+	date_filename(file_name, selected);
 	if ((fp = fopen(file_name, "r"))) {
 		int i = 0;
 		char c;
@@ -141,6 +155,18 @@ int read_day(char *buffer, size_t buf_size, time_t selected){
 	return false;
 }
 
+/*
+	Draw the entry text on a given panel for a given day, provided a text buffer (that will be zeroed).
+*/
+void draw_date_entry(WINDOW ** mainwin, time_t selected, char *text_buffer) {
+	memset(text_buffer, '\0', MAIN_TEXT_SIZE);
+	if (read_day(text_buffer, MAIN_TEXT_SIZE, selected)){
+		mvwprintw(*mainwin, 0, 0, text_buffer);
+	} else {
+		mvwprintw(*mainwin, 0, 0, "Empty.");
+	}
+	wrefresh(*mainwin);
+}
 
 /*
 	Updates the entire calendar part of the UI, to be used when loading a new date.
@@ -148,15 +174,32 @@ int read_day(char *buffer, size_t buf_size, time_t selected){
 		the selected date and a buffer for the entry text
 */
 void update_ui(WINDOW ** days, WINDOW ** mainwin, time_t selected, char *text_buffer) {
-	memset(text_buffer, '\0', MAIN_TEXT_SIZE);
 	draw_week(days, selected);
 	draw_main_window(mainwin, selected);
-	if (read_day(text_buffer, MAIN_TEXT_SIZE, selected)){
-		mvwprintw(*mainwin, 0, 0, text_buffer);
+	draw_date_entry(mainwin, selected, text_buffer);
+}
+
+
+/*
+	Open a program (via fork & exec) in order to edit a given day's entry, 
+	flush the text buffer, then redraw appropriate UI elements.
+*/
+void edit_date(WINDOW ** mainwin, time_t selected, char *text_buffer) {
+	char filename[DAY_NAME_SIZE];
+	date_filename(filename, selected);
+	int pid = fork();
+	refresh();
+	if (pid == 0) {
+		execlp(TERMINAL, TERMINAL, EDITOR, filename, NULL);
+	} else if (pid == -1) {
+		printw("An error occurred opening the process.");
+		refresh();
 	} else {
-		mvwprintw(*mainwin, 0, 0, "Empty.");
+		int status;
+		waitpid(pid, &status, 0);
+		draw_main_window(mainwin, selected);
+		draw_date_entry(mainwin, selected, text_buffer);
 	}
-	wrefresh(*mainwin);
 }
 
 /*
@@ -176,6 +219,9 @@ void ui_loop() {
 		char c = getch();
 		if (c == 'q') { // Quit the program on 'q'
 			break;
+		}
+		else if (c == 'e') {
+			edit_date(&mainwin, selected, text_buffer);
 		}
 		else if (c >= '1' && c <= '7') { // Numbers 1 to 7 select days of the week (Monday = 1)
 			selected = add_days(get_monday(selected), c-ASCII_DIGIT_START-1);
