@@ -137,50 +137,58 @@ int read_day(char *buffer, size_t buf_size, time_t selected){
 	return false;
 }
 
-/* The main body function */
-int main() {
+/*
+	Updates the entire calendar part of the UI, to be used when loading a new date.
+	Requires a pointer to a location for an array of day windows, pointer to main window, 
+		the selected date and a buffer for the entry text
+*/
+void update_ui(WINDOW ** days, WINDOW ** mainwin, time_t selected, char *text_buffer) {
+	memset(text_buffer, '\0', MAIN_TEXT_SIZE);
+	draw_week(days, selected);
+	draw_main_window(mainwin, selected);
+	if (read_day(text_buffer, MAIN_TEXT_SIZE, selected)){
+		mvwprintw(*mainwin, 1, 2, text_buffer);
+	} else {
+		mvwprintw(*mainwin, 1, 2, "Empty.");
+	}
+	wrefresh(*mainwin);
+}
 
-	time_t today_raw;
-	time_t selected;
+/*
+	The main UI loop which renders the ncurses UI and handles character input
+*/
+void ui_loop() {
+	time_t selected, today_raw;
+	char text_buffer[MAIN_TEXT_SIZE];
+	WINDOW * days[DAYS_IN_WEEK];
+	WINDOW * mainwin;
 
 	time(&today_raw);
+	selected = today_raw;
 
+	update_ui(days, &mainwin, selected, text_buffer); // Update once before loop starts
+	while (true) {
+		char c = getch();
+		if (c == 'q') { // Quit the program on 'q'
+			break;
+		}
+		else if (c >= '1' && c <= '7') { // Numbers 1 to 7 select days of the week (Monday = 1)
+			selected = add_days(get_monday(selected), c-ASCII_DIGIT_START-1);
+			update_ui(days, &mainwin, selected, text_buffer);
+		}
+	}
+}
+
+/* The main body function */
+int main() {
 	setlocale(LC_ALL, "");
 	initscr();
-	cbreak();	
+	// cbreak();	
 	noecho();
 	curs_set(0);
 	keypad(stdscr, true);
 
-	WINDOW * days[DAYS_IN_WEEK];
-	WINDOW * mainwin;
-	char text[MAIN_TEXT_SIZE];
-
-	selected = today_raw;
-	draw_week(days, selected);
-
-	draw_main_window(&mainwin, selected);
-	read_day(text, MAIN_TEXT_SIZE, selected);
-	mvwprintw(mainwin, 1, 2, text);
-	wrefresh(mainwin);
-
-	while (1) {
-		char c = getch();
-		if (c == 'q') {
-			break;
-		}
-		else if (c >= '1' && c <= '7') {
-			selected = add_days(get_monday(selected), c-ASCII_DIGIT_START-1);
-			draw_week(days, selected);
-			draw_main_window(&mainwin, selected);
-			if (read_day(text, MAIN_TEXT_SIZE, selected)){
-				mvwprintw(mainwin, 1, 2, text);
-			} else {
-				mvwprintw(mainwin, 1, 2, "Empty.");
-			}
-			wrefresh(mainwin);
-		}
-	}
+	ui_loop();
 
 	endwin();
 	return 0;
