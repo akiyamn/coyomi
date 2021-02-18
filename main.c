@@ -9,7 +9,8 @@
 #define MAIN_TEXT_SIZE 5000
 #define ASCII_DIGIT_START 48
 #define SECONDS_IN_DAY 86400
-#define LAYOUT_X_RATIO 1/4
+#define LAYOUT_X_RATIO 0.25
+#define MAIN_PADDING 2
 
 /*
 	Returns num_of_days to the time_t input given.
@@ -100,15 +101,18 @@ void draw_main_window_text(WINDOW ** mainwin, time_t selected){
 */
 void draw_main_window(WINDOW ** mainwin, time_t selected) {
 	int ymax, xmax, ysize, xsize, ypos, xpos;
+	WINDOW *mainwin_border;
 	getmaxyx(stdscr, ymax, xmax);
 	ysize = (ymax/DAYS_IN_WEEK)*DAYS_IN_WEEK;
 	xsize = xmax*(1-LAYOUT_X_RATIO);
 	ypos = 0;
 	xpos = xmax*LAYOUT_X_RATIO+1;
-	*mainwin = newwin(ysize, xsize, ypos, xpos);
+	mainwin_border = newwin(ysize, xsize, ypos, xpos);
+	*mainwin = newwin(ysize-MAIN_PADDING*2, xsize-MAIN_PADDING*2, ypos+MAIN_PADDING, xpos+MAIN_PADDING);
 	refresh();
-	box(*mainwin, 0, 0);
-	draw_main_window_text(mainwin, selected);
+	box(mainwin_border, 0, 0);
+	draw_main_window_text(&mainwin_border, selected);
+	wrefresh(mainwin_border);
 }
 
 /*
@@ -137,6 +141,7 @@ int read_day(char *buffer, size_t buf_size, time_t selected){
 	return false;
 }
 
+
 /*
 	Updates the entire calendar part of the UI, to be used when loading a new date.
 	Requires a pointer to a location for an array of day windows, pointer to main window, 
@@ -147,9 +152,9 @@ void update_ui(WINDOW ** days, WINDOW ** mainwin, time_t selected, char *text_bu
 	draw_week(days, selected);
 	draw_main_window(mainwin, selected);
 	if (read_day(text_buffer, MAIN_TEXT_SIZE, selected)){
-		mvwprintw(*mainwin, 1, 2, text_buffer);
+		mvwprintw(*mainwin, 0, 0, text_buffer);
 	} else {
-		mvwprintw(*mainwin, 1, 2, "Empty.");
+		mvwprintw(*mainwin, 0, 0, "Empty.");
 	}
 	wrefresh(*mainwin);
 }
