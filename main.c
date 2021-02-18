@@ -28,31 +28,6 @@ void date_string(char *buffer, size_t buf_size, time_t time, int verbose) {
 	}
 }
 
-// void days_from_today(char *buffer, size_t buf_size, int days_offset, int verbose) {
-// 	time_t rawtime;
-// 	struct tm *newtime;
-//    	time(&rawtime);
-// 	rawtime += days_offset * 24 * 60 * 60;
-// 	newtime = localtime(&rawtime);
-// 	if (verbose) {
-// 		strftime(buffer, buf_size, "%A %e %B, %Y", newtime);
-// 	} else {
-// 		strftime(buffer, buf_size, "%A %e %b", newtime);
-// 	}
-	
-// }
-
-
-// void draw_week_names_r(WINDOW ** days, int week_offset, int selected) {
-// 	for (int i = 0; i < 7; i++){
-// 		char day_name[50];
-// 		days_from_today(day_name, 50, i-week_offset, false);
-// 		if (selected == i) {wattron(days[i], A_REVERSE);}
-// 		mvwprintw(days[i], 0, 1, day_name);
-// 		wattroff(days[i], A_REVERSE);
-// 		wrefresh(days[i]);
-// 	}
-// }
 
 void draw_week_names(WINDOW ** day_windows, time_t selected) {
 	for (int i = 0; i < 7; i++){
@@ -68,24 +43,11 @@ void draw_week_names(WINDOW ** day_windows, time_t selected) {
 }
 
 
-// void draw_week_r(WINDOW ** days, int week_offset, int selected) {
-// 	int xmax, ymax;
-// 	getmaxyx(stdscr, ymax, xmax);
-// 	for (int i = 0; i < 7; i++){
-// 		days[i] = newwin(5, xmax/4, i*5, 0);
-// 		box(days[i], 0, 0);
-		
-// 	}
-// 	refresh();	
-// 	draw_week_names(days, week_offset, selected);
-// 	return;
-// }
-
 void draw_week(WINDOW ** days, time_t selected) {
 	int xmax, ymax;
 	getmaxyx(stdscr, ymax, xmax);
 	for (int i = 0; i < 7; i++){
-		days[i] = newwin(5, xmax/4, i*5, 0);
+		days[i] = newwin(ymax/7, xmax/4, i*(ymax/7), 0);
 		box(days[i], 0, 0);
 		
 	}
@@ -105,7 +67,7 @@ void draw_main_window_text(WINDOW ** mainwin, time_t selected){
 void draw_main_window(WINDOW ** mainwin, time_t selected) {
 	int xmax, ymax;
 	getmaxyx(stdscr, ymax, xmax);
-	*mainwin = newwin(7*5, xmax*(3/4), 0, xmax/4+1);
+	*mainwin = newwin((ymax/7)*7, xmax*(3/4), 0, xmax/4+1);
 	refresh();
 	box(*mainwin, 0, 0);
 	draw_main_window_text(mainwin, selected);
@@ -136,14 +98,10 @@ int read_day(char *buffer, size_t buf_size, time_t selected){
 int main() {
 
 	time_t today_raw;
-	// struct tm *today;
 	int xmax, ymax;
-	// int week_offset;
 	time_t selected;
 
 	time(&today_raw);
-	// today = localtime(&today_raw);
-	// week_offset = today->tm_wday-1;
 
 	setlocale(LC_ALL, "");
 	initscr();
@@ -172,7 +130,7 @@ int main() {
 		}
 		else if (c >= '1' && c <= '7') {
 			selected = add_days(get_monday(selected), c-48-1);
-			draw_week_names(days, selected);
+			draw_week(days, selected);
 			draw_main_window(&mainwin, selected);
 			if (read_day(text, 5000, selected)){
 				mvwprintw(mainwin, 1, 2, text);
