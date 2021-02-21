@@ -45,7 +45,7 @@ For the purposes of this documentation moving "forward one day" means going into
 
 #### Vi-like movement
 A vi-like command in coyomi consists of a number and a descriptor. (Usually a number and a letter)
-_E.g.:_ `12w` would correspond to going forward 18 (`12`) weeks (`w`)
+_E.g.:_ `12w` would correspond to going forward `12` weeks (`w`)
 If no number is given, `1` is implied.
 
 The arrow keys mentioned above are treated as aliases to the letter descriptors they represent below.
