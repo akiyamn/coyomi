@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <locale.h>
 #include <time.h>
 #include <unistd.h> 
@@ -202,12 +203,62 @@ void edit_date(WINDOW ** mainwin, time_t selected, char *text_buffer) {
 	}
 }
 
+int is_digit(char c) {
+	return c >= '0' && c <= '9';
+}
+
+time_t parse_vi_command(char *command, size_t size, time_t selected) {
+	int num_times = 0;
+	int i;
+	int digit_value;
+	char letter_command = command[size-1];
+	if (size > 1) {
+		for (i = 0; i<size-1; i++) {
+			if (is_digit(command[i])) {
+				digit_value = command[i]-48;
+				num_times += digit_value * pow(10, i);
+			}
+		}
+	} else {
+		num_times = 1;
+	}
+	for (i = 0; i<num_times; i++) {
+		switch (letter_command) {
+			case 'd': 
+				selected = add_days(selected, 1); 
+				break;
+			case 'D': selected = add_days(selected, -1); break;
+			case 'w': selected = add_days(selected, 7); break;
+			case 'W': selected = add_days(selected, -7); break;
+			case 'f': selected = add_days(selected, 14); break;
+			case 'F': selected = add_days(selected, -14); break;
+			case 'm': selected = add_days(selected, 30); break;
+			case 'M': selected = add_days(selected, -30); break;
+			case 'y': selected = add_days(selected, 365); break;
+			case 'Y': selected = add_days(selected, -365); break;
+		}
+	} 
+	return selected;
+
+}
+
+int input_vi_command(char* command_buffer, char first_char) {
+	size_t command_size = 1;
+	command_buffer[0] = first_char;
+	while (is_digit(command_buffer[command_size-1])) {
+		command_buffer[command_size++] = getch();
+	}
+	return command_size;
+}
+
 /*
 	The main UI loop which renders the ncurses UI and handles character input
 */
 void ui_loop() {
 	time_t selected, today_raw;
 	char text_buffer[MAIN_TEXT_SIZE];
+	char command_buffer[50];
+	size_t command_size;
 	WINDOW * days[DAYS_IN_WEEK];
 	WINDOW * mainwin;
 
@@ -217,18 +268,29 @@ void ui_loop() {
 	update_ui(days, &mainwin, selected, text_buffer); // Update once before loop starts
 	while (true) {
 		char c = getch();
-		if (c == 'q') { // Quit the program on 'q'
+		switch(c) {
+			case 'q': return; // Quit the program on 'q'
+			case 'e': edit_date(&mainwin, selected, text_buffer); break;
+			case ' ': 
+				time(&selected);
+				update_ui(days, &mainwin, selected, text_buffer);
+				break;
+		// else if (c >= '1' && c <= '7') { // Numbers 1 to 7 select days of the week (Monday = 1)
+		// 	selected = add_days(get_monday(selected), c-ASCII_DIGIT_START-1);
+		// 	update_ui(days, &mainwin, selected, text_buffer);
+		// }
+		default:
+			memset(command_buffer, '\0', 50);
+			command_size = input_vi_command(command_buffer, c);
+			selected = parse_vi_command(command_buffer, command_size, selected);
+			update_ui(days, &mainwin, selected, text_buffer);
 			break;
 		}
-		else if (c == 'e') {
-			edit_date(&mainwin, selected, text_buffer);
-		}
-		else if (c >= '1' && c <= '7') { // Numbers 1 to 7 select days of the week (Monday = 1)
-			selected = add_days(get_monday(selected), c-ASCII_DIGIT_START-1);
-			update_ui(days, &mainwin, selected, text_buffer);
-		}
+
 	}
 }
+
+
 
 /* The main body function */
 int main() {
