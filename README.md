@@ -4,7 +4,9 @@ Uses the ncurses library for TUI in the terminal and runs only on Unix based ope
 
 ![a screenshot of coyomi](https://hirasawa.moe/media/coyomi.png)
 
-## Requirements:
+Build Requirements:
+No requirements are needed (other than an applicable system) in order to run just the binary executable.
+
 - `gcc` compiler
 - `ncurses` library
 
