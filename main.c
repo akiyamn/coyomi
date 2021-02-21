@@ -10,6 +10,7 @@
 
 #define DAYS_IN_WEEK 7
 #define DAY_NAME_SIZE 50
+#define COMMAND_SIZE 50
 #define MAIN_TEXT_SIZE 5000
 #define ASCII_DIGIT_START 48
 #define SECONDS_IN_DAY 86400
@@ -210,10 +211,16 @@ void edit_date(WINDOW ** mainwin, time_t selected, char *text_buffer) {
 	}
 }
 
+/*
+	Returns if a given character (expressed as an int) is a digit from 0 to 9
+*/
 int is_digit(int c) {
 	return c >= '0' && c <= '9';
 }
 
+/*
+	Given a vi command, its length and the selected time, return a new time which is the result of the command
+*/
 time_t parse_vi_command(int *command, size_t size, time_t selected) {
 	int num_times = 0;
 	int i;
@@ -229,21 +236,19 @@ time_t parse_vi_command(int *command, size_t size, time_t selected) {
 	} else {
 		num_times = 1;
 	}
-	for (i = 0; i<num_times; i++) {
+	for (i = 0; i<num_times; i++) { // Breakdown of keys to representation
 		switch (letter_command) {
 			case KEY_DOWN:
-			case 'd': 
-				selected = add_days(selected, 1); 
-				break;
+			case 'd': selected = add_days(selected, 1); break;
 			case KEY_UP:
 			case 'D': selected = add_days(selected, -1); break;
 			case KEY_RIGHT:
-			case 'w': selected = add_days(selected, 7); break;
+			case 'w': selected = add_days(selected, DAYS_IN_WEEK); break;
 			case KEY_LEFT:
-			case 'W': selected = add_days(selected, -7); break;
-			case 'f': selected = add_days(selected, 14); break;
-			case 'F': selected = add_days(selected, -14); break;
-			case 'm': selected = add_days(selected, 30); break;
+			case 'W': selected = add_days(selected, -DAYS_IN_WEEK); break;
+			case 'f': selected = add_days(selected, DAYS_IN_WEEK*2); break;
+			case 'F': selected = add_days(selected, -DAYS_IN_WEEK*2); break;
+			case 'm': selected = add_days(selected, 30); break; // TODO: Dynamic month and year number of days 
 			case 'M': selected = add_days(selected, -30); break;
 			case 'y': selected = add_days(selected, 365); break;
 			case 'Y': selected = add_days(selected, -365); break;
@@ -253,6 +258,13 @@ time_t parse_vi_command(int *command, size_t size, time_t selected) {
 
 }
 
+/*
+	Prompts the user to enter a vi command and puts the result in the command_buffer (array of ints)
+	Requires the first character as a separate argument (to be appended to the array)
+	Shows text output similar to vi, vim, less etc... to comwin window.
+	Returns the length of the command (i.e. the number of ints used in the buffer)
+
+*/
 int input_vi_command(WINDOW *comwin, int* command_buffer, int first_char) {
 	size_t command_size = 1;
 	wmove(comwin, 0, 0);
@@ -275,7 +287,7 @@ int input_vi_command(WINDOW *comwin, int* command_buffer, int first_char) {
 void ui_loop() {
 	time_t selected, today_raw;
 	char text_buffer[MAIN_TEXT_SIZE];
-	int command_buffer[50];
+	int command_buffer[COMMAND_SIZE];
 	size_t command_size;
 	WINDOW * days[DAYS_IN_WEEK];
 	WINDOW * mainwin;
@@ -286,19 +298,18 @@ void ui_loop() {
 
 	update_ui(days, &mainwin, selected, text_buffer); // Update once before loop starts
 	draw_command_window(&comwin);
-	while (true) {
+	while (true) { // Main loop
 		int c = getch();
-		wrefresh(comwin);
 		switch(c) {
 			case 'q': return; // Quit the program on 'q'
-			case 'e': edit_date(&mainwin, selected, text_buffer); break;
-			case ' ': 
+			case 'e': edit_date(&mainwin, selected, text_buffer); break; // Edit entry
+			case ' ':  // Return to the current day
 				time(&selected);
 				update_ui(days, &mainwin, selected, text_buffer);
 				break;
 		default:
-
-			memset(command_buffer, '\0', 50*sizeof(int));
+			// Input and execute vi-like commands if pattern not matched
+			memset(command_buffer, '\0', COMMAND_SIZE*sizeof(int)); // Clear cmd buffer
 			command_size = input_vi_command(comwin, command_buffer, c);
 			selected = parse_vi_command(command_buffer, command_size, selected);
 			update_ui(days, &mainwin, selected, text_buffer);
