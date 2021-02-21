@@ -222,8 +222,8 @@ time_t parse_vi_command(int *command, size_t size, time_t selected) {
 	if (size > 1) {
 		for (i = 0; i<size-1; i++) {
 			if (is_digit(command[i])) {
-				digit_value = command[i]-48;
-				num_times += digit_value * pow(10, i);
+				digit_value = command[i]-ASCII_DIGIT_START;
+				num_times += digit_value * pow(10, size-i-2);
 			}
 		}
 	} else {
