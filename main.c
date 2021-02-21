@@ -123,6 +123,13 @@ void draw_main_window(WINDOW ** mainwin, time_t selected) {
 	wrefresh(mainwin_border);
 }
 
+void draw_command_window(WINDOW ** comwin) {
+	int ymax, xmax;
+	getmaxyx(stdscr, ymax, xmax);
+	*comwin = newwin(1, xmax-1, (ymax/DAYS_IN_WEEK)*DAYS_IN_WEEK, 0);
+	refresh();
+}
+
 /*
 	Creates the file path and name for a given time and stores it in the filename buffer
 */
@@ -203,15 +210,15 @@ void edit_date(WINDOW ** mainwin, time_t selected, char *text_buffer) {
 	}
 }
 
-int is_digit(char c) {
+int is_digit(int c) {
 	return c >= '0' && c <= '9';
 }
 
-time_t parse_vi_command(char *command, size_t size, time_t selected) {
+time_t parse_vi_command(int *command, size_t size, time_t selected) {
 	int num_times = 0;
 	int i;
 	int digit_value;
-	char letter_command = command[size-1];
+	int letter_command = command[size-1];
 	if (size > 1) {
 		for (i = 0; i<size-1; i++) {
 			if (is_digit(command[i])) {
@@ -224,11 +231,15 @@ time_t parse_vi_command(char *command, size_t size, time_t selected) {
 	}
 	for (i = 0; i<num_times; i++) {
 		switch (letter_command) {
+			case KEY_DOWN:
 			case 'd': 
 				selected = add_days(selected, 1); 
 				break;
+			case KEY_UP:
 			case 'D': selected = add_days(selected, -1); break;
+			case KEY_RIGHT:
 			case 'w': selected = add_days(selected, 7); break;
+			case KEY_LEFT:
 			case 'W': selected = add_days(selected, -7); break;
 			case 'f': selected = add_days(selected, 14); break;
 			case 'F': selected = add_days(selected, -14); break;
@@ -242,12 +253,19 @@ time_t parse_vi_command(char *command, size_t size, time_t selected) {
 
 }
 
-int input_vi_command(char* command_buffer, char first_char) {
+int input_vi_command(WINDOW *comwin, int* command_buffer, int first_char) {
 	size_t command_size = 1;
+	wmove(comwin, 0, 0);
+	wclear(comwin);
+	wrefresh(comwin);
 	command_buffer[0] = first_char;
 	while (is_digit(command_buffer[command_size-1])) {
+		wprintw(comwin, "%c", command_buffer[command_size-1]);
+		wrefresh(comwin);
 		command_buffer[command_size++] = getch();
 	}
+	wclear(comwin);
+	wrefresh(comwin);
 	return command_size;
 }
 
@@ -257,17 +275,20 @@ int input_vi_command(char* command_buffer, char first_char) {
 void ui_loop() {
 	time_t selected, today_raw;
 	char text_buffer[MAIN_TEXT_SIZE];
-	char command_buffer[50];
+	int command_buffer[50];
 	size_t command_size;
 	WINDOW * days[DAYS_IN_WEEK];
 	WINDOW * mainwin;
+	WINDOW * comwin;
 
 	time(&today_raw);
 	selected = today_raw;
 
 	update_ui(days, &mainwin, selected, text_buffer); // Update once before loop starts
+	draw_command_window(&comwin);
 	while (true) {
-		char c = getch();
+		int c = getch();
+		wrefresh(comwin);
 		switch(c) {
 			case 'q': return; // Quit the program on 'q'
 			case 'e': edit_date(&mainwin, selected, text_buffer); break;
@@ -275,13 +296,10 @@ void ui_loop() {
 				time(&selected);
 				update_ui(days, &mainwin, selected, text_buffer);
 				break;
-		// else if (c >= '1' && c <= '7') { // Numbers 1 to 7 select days of the week (Monday = 1)
-		// 	selected = add_days(get_monday(selected), c-ASCII_DIGIT_START-1);
-		// 	update_ui(days, &mainwin, selected, text_buffer);
-		// }
 		default:
-			memset(command_buffer, '\0', 50);
-			command_size = input_vi_command(command_buffer, c);
+
+			memset(command_buffer, '\0', 50*sizeof(int));
+			command_size = input_vi_command(comwin, command_buffer, c);
 			selected = parse_vi_command(command_buffer, command_size, selected);
 			update_ui(days, &mainwin, selected, text_buffer);
 			break;
