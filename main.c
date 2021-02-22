@@ -87,20 +87,17 @@ void draw_main_window_text(WINDOW ** mainwin, time_t selected){
 /*
 	Draws the entire main window (not including read data), given a pointer to the main window and the selected day
 */
-void draw_main_window(WINDOW ** mainwin, time_t selected) {
+void draw_main_window(WINDOW ** mainwin, WINDOW ** textwin, time_t selected) {
 	int ymax, xmax, ysize, xsize, ypos, xpos;
-	WINDOW *mainwin_border;
 	getmaxyx(stdscr, ymax, xmax);
 	ysize = (ymax/DAYS_IN_WEEK)*DAYS_IN_WEEK;
 	xsize = xmax*(1-LAYOUT_X_RATIO);
 	ypos = 0;
 	xpos = xmax*LAYOUT_X_RATIO+1;
-	mainwin_border = newwin(ysize, xsize, ypos, xpos);
-	*mainwin = newwin(ysize-MAIN_PADDING*2, xsize-MAIN_PADDING*2, ypos+MAIN_PADDING, xpos+MAIN_PADDING);
+	*mainwin = newwin(ysize, xsize, ypos, xpos);
+	*textwin = newwin(ysize-MAIN_PADDING*2, xsize-MAIN_PADDING*2, ypos+MAIN_PADDING, xpos+MAIN_PADDING);
 	refresh();
-	box(mainwin_border, 0, 0);
-	draw_main_window_text(&mainwin_border, selected);
-	wrefresh(mainwin_border);
+	draw_main_window_text(mainwin, selected);
 }
 
 void draw_command_window(WINDOW ** comwin) {
@@ -146,14 +143,15 @@ int read_day(char *buffer, size_t buf_size, time_t selected){
 /*
 	Draw the entry text on a given panel for a given day, provided a text buffer (that will be zeroed).
 */
-void draw_date_entry(WINDOW ** mainwin, time_t selected, char *text_buffer) {
+void draw_date_entry(WINDOW ** textwin, time_t selected, char *text_buffer) {
+	wclear(*textwin);
 	memset(text_buffer, '\0', MAIN_TEXT_SIZE);
 	if (read_day(text_buffer, MAIN_TEXT_SIZE, selected)){
-		mvwprintw(*mainwin, 0, 0, text_buffer);
+		mvwprintw(*textwin, 0, 0, text_buffer);
 	} else {
-		mvwprintw(*mainwin, 0, 0, "Empty.");
+		mvwprintw(*textwin, 0, 0, "Empty.");
 	}
-	wrefresh(*mainwin);
+	wrefresh(*textwin);
 }
 
 /*
@@ -161,18 +159,18 @@ void draw_date_entry(WINDOW ** mainwin, time_t selected, char *text_buffer) {
 	Requires a pointer to a location for an array of day windows, pointer to main window, 
 		the selected date and a buffer for the entry text
 */
-void update_ui(WINDOW ** days, WINDOW ** mainwin, time_t selected, char *text_buffer) {
-	draw_week(days, selected);
-	draw_main_window(mainwin, selected);
-	draw_date_entry(mainwin, selected, text_buffer);
-}
+// void update_ui(WINDOW ** days, WINDOW ** mainwin, time_t selected, char *text_buffer) {
+// 	draw_week(days, selected);
+// 	draw_main_window(mainwin, selected);
+// 	draw_date_entry(mainwin, selected, text_buffer);
+// }
 
 
 /*
 	Open a program (via fork & exec) in order to edit a given day's entry, 
 	flush the text buffer, then redraw appropriate UI elements.
 */
-void edit_date(WINDOW ** mainwin, time_t selected, char *text_buffer) {
+void edit_date(WINDOW ** textwin, time_t selected, char *text_buffer) {
 	char filename[DAY_NAME_SIZE];
 	date_filename(filename, selected);
 	int pid = fork();
@@ -185,8 +183,8 @@ void edit_date(WINDOW ** mainwin, time_t selected, char *text_buffer) {
 	} else {
 		int status;
 		waitpid(pid, &status, 0);
-		draw_main_window(mainwin, selected);
-		draw_date_entry(mainwin, selected, text_buffer);
+		// draw_main_window_text(textwin, selected);
+		draw_date_entry(textwin, selected, text_buffer);
 	}
 }
 
@@ -270,28 +268,41 @@ void ui_loop() {
 	size_t command_size;
 	WINDOW * days[DAYS_IN_WEEK];
 	WINDOW * mainwin;
+	WINDOW * textwin;
 	WINDOW * comwin;
 
 	time(&today_raw);
 	selected = today_raw;
 
-	update_ui(days, &mainwin, selected, text_buffer); // Update once before loop starts
+	// update_ui(days, &mainwin, selected, text_buffer); // Update once before loop starts
+	draw_week(days, selected);
+	draw_main_window(&mainwin, &textwin, selected);
+	draw_date_entry(&textwin, selected, text_buffer);
 	draw_command_window(&comwin);
 	while (true) { // Main loop
 		int c = getch();
 		switch(c) {
 			case 'q': return; // Quit the program on 'q'
-			case 'e': edit_date(&mainwin, selected, text_buffer); break; // Edit entry
+			case 'e': edit_date(&textwin, selected, text_buffer); break; // Edit entry
 			case ' ':  // Return to the current day
 				time(&selected);
-				update_ui(days, &mainwin, selected, text_buffer);
+				for (int i = 0; i<DAYS_IN_WEEK; i++) {
+					box(days[i], 0, 0);
+				}
+				draw_main_window_text(&mainwin, selected);
+				draw_week_names(days, selected);
+				draw_date_entry(&textwin, selected, text_buffer);
+				// update_ui(days, &mainwin, selected, text_buffer);
 				break;
 		default:
 			// Input and execute vi-like commands if pattern not matched
 			memset(command_buffer, '\0', COMMAND_SIZE*sizeof(int)); // Clear cmd buffer
 			command_size = input_vi_command(comwin, command_buffer, c);
 			selected = parse_vi_command(command_buffer, command_size, selected);
-			update_ui(days, &mainwin, selected, text_buffer);
+			draw_main_window_text(&mainwin, selected);
+			draw_week_names(days, selected);
+			draw_date_entry(&textwin, selected, text_buffer);
+			// update_ui(days, &mainwin, selected, text_buffer);
 			break;
 		}
 
