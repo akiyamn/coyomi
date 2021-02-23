@@ -160,9 +160,6 @@ void resize_windows(WINDOW ** days, WINDOW ** mainwin, WINDOW ** textwin, WINDOW
 	wresize(*comwin, dims.ysize, dims.xsize);
 	mvwin(*comwin, dims.ypos, dims.xpos);
 
-	// Redraw both windows
-	draw_main_window(mainwin, textwin, selected);
-	draw_week_windows(days, selected);
 	refresh();
 }
 
@@ -314,7 +311,7 @@ int input_vi_command(WINDOW *comwin, int* command_buffer, int first_char) {
 	wclear(comwin);
 	wrefresh(comwin);
 	command_buffer[0] = first_char;
-	while (is_digit(command_buffer[command_size-1])) {
+	while (is_digit(command_buffer[command_size-1])) { // Keep adding characters until a non-digit is found
 		wprintw(comwin, "%c", command_buffer[command_size-1]);
 		wrefresh(comwin);
 		command_buffer[command_size++] = getch();
@@ -348,32 +345,20 @@ void ui_loop() {
 		int c = getch();
 		switch(c) {
 			case 'q': return; // Quit the program on 'q'
-			case KEY_RESIZE:
-				// clear();
+			case KEY_RESIZE: // Triggered when the window resizes
 				clear();
 				resize_windows(days, &mainwin, &textwin, &comwin, selected);
-				update_ui(days, &mainwin, &textwin, selected, text_buffer);
 				break;
-			case 'e': 
-				// draw_week_windows(days, selected);
-				edit_date(&textwin, selected, text_buffer);
-				update_ui(days, &mainwin, &textwin, selected, text_buffer);
-				break; // Edit entry
-			case ' ':  // Return to the current day
-				time(&selected);
-				// for (int i = 0; i<DAYS_IN_WEEK; i++) {
-				// 	box(days[i], 0, 0);
-				// }
-				update_ui(days, &mainwin, &textwin, selected, text_buffer);
-				break;
+			case 'e': edit_date(&textwin, selected, text_buffer); break; // Edit entry
+			case ' ': time(&selected); break; // Return to the current day
 		default:
 			// Input and execute vi-like commands if pattern not matched
 			memset(command_buffer, '\0', COMMAND_SIZE*sizeof(int)); // Clear cmd buffer
 			command_size = input_vi_command(comwin, command_buffer, c);
 			selected = parse_vi_command(command_buffer, command_size, selected);
-			update_ui(days, &mainwin, &textwin, selected, text_buffer);
 			break;
 		}
+		update_ui(days, &mainwin, &textwin, selected, text_buffer);
 
 	}
 }
