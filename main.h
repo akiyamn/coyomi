@@ -24,4 +24,12 @@
 #define TERMINAL "st"
 #define EDITOR "vim"
 
+typedef struct win_dims_t {
+    int ysize;
+    int xsize;
+    int ypos;
+    int xpos;
+} win_dims_t;
+
+
 #endif
