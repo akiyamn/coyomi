@@ -39,19 +39,25 @@ void date_string(char *buffer, size_t buf_size, time_t time, int verbose) {
 	Draws the string date labels for the week panel, given a list of windows for each day and the selected day
 */
 void draw_week_windows(WINDOW ** day_windows, time_t selected) {
+	int ymax, xmax, ysize, xsize;
+	getmaxyx(stdscr, ymax, xmax);
+	ysize = ymax/DAYS_IN_WEEK;
+	xsize = xmax*LAYOUT_X_RATIO;
 	for (int i = 0; i < DAYS_IN_WEEK; i++){
+		wclear(day_windows[i]);
 		char day_name[DAY_NAME_SIZE];
 		time_t monday, this_day;
 		monday = get_monday(selected);
 		this_day = add_days(monday, i);
 		date_string(day_name, DAY_NAME_SIZE, this_day, false); // Get the date string
+		wresize(day_windows[i], ysize, xsize);
+		box(day_windows[i], 0, 0);
 		if (this_day == selected) {wattron(day_windows[i], A_REVERSE);} // Highlight the selected day
 		mvwprintw(day_windows[i], 0, 1, day_name); // Place the date string onto the screen
 		wattroff(day_windows[i], A_REVERSE);
 		wrefresh(day_windows[i]);
 	}
 }
-
 
 /*
 	Draws the entire 7 week panel including labels and boxes, given a memory location for the window representing each day
@@ -76,8 +82,16 @@ void create_week_window(WINDOW ** days, time_t selected) {
 /*
 	Draws the date label and border for the main window, given a pointer to the main window and the selected day
 */
-void draw_main_window(WINDOW ** mainwin, time_t selected){
+void draw_main_window(WINDOW ** mainwin, WINDOW ** textwin, time_t selected){
+	int ymax, xmax, ysize, xsize;
 	char now_string[DAY_NAME_SIZE];
+	getmaxyx(stdscr, ymax, xmax);
+	ysize = (ymax/DAYS_IN_WEEK)*DAYS_IN_WEEK;
+	xsize = xmax*(1-LAYOUT_X_RATIO);
+	wclear(*mainwin);
+	wclear(*textwin);
+	wresize(*mainwin, ysize, xsize);
+	wresize(*textwin, ysize-MAIN_PADDING*2, xsize-MAIN_PADDING*2);
 	date_string(now_string, DAY_NAME_SIZE, selected, true);
 	box(*mainwin, 0, 0);
 	mvwprintw(*mainwin, 0, 1, now_string);
@@ -97,7 +111,19 @@ void create_main_window(WINDOW ** mainwin, WINDOW ** textwin, time_t selected) {
 	*mainwin = newwin(ysize, xsize, ypos, xpos);
 	*textwin = newwin(ysize-MAIN_PADDING*2, xsize-MAIN_PADDING*2, ypos+MAIN_PADDING, xpos+MAIN_PADDING);
 	refresh();
-	draw_main_window(mainwin, selected);
+	draw_main_window(mainwin, textwin, selected);
+}
+
+void resize_windows(WINDOW ** days, WINDOW ** mainwin, WINDOW ** textwin, time_t selected) {
+	int ymax, xmax, ysize, xsize;
+	getmaxyx(stdscr, ymax, xmax);
+	for (int i = 0; i < DAYS_IN_WEEK; i++){
+		ysize = ymax/DAYS_IN_WEEK;
+		xsize = xmax*LAYOUT_X_RATIO;
+		wresize(days[i], ysize, xsize);
+		box(days[i], 0, 0);
+	}
+	// draw_week_windows(days, selected);
 }
 
 void create_com_window(WINDOW ** comwin) {
@@ -160,7 +186,7 @@ void draw_date_entry(WINDOW ** textwin, time_t selected, char *text_buffer) {
 		the selected date and a buffer for the entry text
 */
 void update_ui(WINDOW ** days, WINDOW ** mainwin, WINDOW ** textwin, time_t selected, char *text_buffer) {
-	draw_main_window(mainwin, selected);
+	draw_main_window(mainwin, textwin, selected);
 	draw_week_windows(days, selected);
 	draw_date_entry(textwin, selected, text_buffer);
 }
@@ -281,12 +307,22 @@ void ui_loop() {
 		int c = getch();
 		switch(c) {
 			case 'q': return; // Quit the program on 'q'
-			case 'e': edit_date(&textwin, selected, text_buffer); break; // Edit entry
+			case KEY_RESIZE:
+				// clear();
+				update_ui(days, &mainwin, &textwin, selected, text_buffer);
+				// resize_windows(days, &mainwin, &textwin, selected);
+				break;
+			case 'e': 
+				// draw_week_windows(days, selected);
+				update_ui(days, &mainwin, &textwin, selected, text_buffer);
+				edit_date(&textwin, selected, text_buffer);
+				update_ui(days, &mainwin, &textwin, selected, text_buffer);
+				break; // Edit entry
 			case ' ':  // Return to the current day
 				time(&selected);
-				for (int i = 0; i<DAYS_IN_WEEK; i++) {
-					box(days[i], 0, 0);
-				}
+				// for (int i = 0; i<DAYS_IN_WEEK; i++) {
+				// 	box(days[i], 0, 0);
+				// }
 				update_ui(days, &mainwin, &textwin, selected, text_buffer);
 				break;
 		default:
