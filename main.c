@@ -22,6 +22,15 @@ time_t get_monday(time_t input) {
 
 
 /*
+	Creates the file path and name for a given time and stores it in the filename buffer
+*/
+void date_filename(char *filename, time_t time) {
+	struct tm *time_obj;
+	time_obj = localtime(&time);
+	strftime(filename, DAY_NAME_SIZE, "entries/%F.md", time_obj);
+}
+
+/*
 	Returns a formatted string date given a time_t time, buffer and appropriate size
 	Verbose, if true: returns a longer date string including the year.
 */
@@ -36,26 +45,9 @@ void date_string(char *buffer, size_t buf_size, time_t time, int verbose) {
 }
 
 
-win_dims_t dims_main_window() {
-	int ymax, xmax;
-	getmaxyx(stdscr, ymax, xmax);
-	win_dims_t dims;
-	dims.ysize = (ymax/DAYS_IN_WEEK)*DAYS_IN_WEEK;
-	dims.xsize = xmax*(1-LAYOUT_X_RATIO);
-	dims.ypos = 0;
-	dims.xpos = xmax*LAYOUT_X_RATIO+1;
-	return dims;
-}
-
-win_dims_t dims_text_window() {
-	win_dims_t dims = dims_main_window();
-	dims.ysize += -MAIN_PADDING*2;
-	dims.xsize += -MAIN_PADDING*2;
-	dims.ypos += MAIN_PADDING;
-	dims.xpos += MAIN_PADDING;
-	return dims;
-}
-
+/*
+	Return a win_dims_t object describing the dimensions of a given day window in a week
+*/
 win_dims_t dims_day_window(int offset) {
 	int ymax, xmax;
 	getmaxyx(stdscr, ymax, xmax);
@@ -63,17 +55,6 @@ win_dims_t dims_day_window(int offset) {
 	dims.ysize = ymax/DAYS_IN_WEEK;
 	dims.xsize = xmax*LAYOUT_X_RATIO;
 	dims.ypos = offset*(ymax/DAYS_IN_WEEK);
-	dims.xpos = 0;
-	return dims;
-}
-
-win_dims_t dims_com_window() {
-	int ymax, xmax;
-	getmaxyx(stdscr, ymax, xmax);
-	win_dims_t dims;
-	dims.ysize = 1;
-	dims.xsize = xmax-1;
-	dims.ypos = (ymax/DAYS_IN_WEEK)*DAYS_IN_WEEK;
 	dims.xpos = 0;
 	return dims;
 }
@@ -113,6 +94,31 @@ void create_week_window(WINDOW ** days, time_t selected) {
 	return;
 }
 
+/*
+	Return a win_dims_t object describing the dimensions of the main window
+*/
+win_dims_t dims_main_window() {
+	int ymax, xmax;
+	getmaxyx(stdscr, ymax, xmax);
+	win_dims_t dims;
+	dims.ysize = (ymax/DAYS_IN_WEEK)*DAYS_IN_WEEK;
+	dims.xsize = xmax*(1-LAYOUT_X_RATIO);
+	dims.ypos = 0;
+	dims.xpos = xmax*LAYOUT_X_RATIO+1;
+	return dims;
+}
+
+/*
+	Return a win_dims_t object describing the dimensions of the main window
+*/
+win_dims_t dims_text_window() {
+	win_dims_t dims = dims_main_window();
+	dims.ysize += -MAIN_PADDING*2;
+	dims.xsize += -MAIN_PADDING*2;
+	dims.ypos += MAIN_PADDING;
+	dims.xpos += MAIN_PADDING;
+	return dims;
+}
 
 /*
 	Draws the date label and border for the main window, given a pointer to the main window and the selected day
@@ -139,7 +145,34 @@ void create_main_window(WINDOW ** mainwin, WINDOW ** textwin, time_t selected) {
 }
 
 
+/*
+	Return a win_dims_t object describing the dimensions of the command window
+*/
+win_dims_t dims_com_window() {
+	int ymax, xmax;
+	getmaxyx(stdscr, ymax, xmax);
+	win_dims_t dims;
+	dims.ysize = 1;
+	dims.xsize = xmax-1;
+	dims.ypos = (ymax/DAYS_IN_WEEK)*DAYS_IN_WEEK;
+	dims.xpos = 0;
+	return dims;
+}
 
+/*
+	Creates the command window, given a location to store it
+*/
+void create_com_window(WINDOW ** comwin) {
+	int ymax, xmax;
+	getmaxyx(stdscr, ymax, xmax);
+	win_dims_t dims = dims_com_window();
+	*comwin = newwin(dims.ysize, dims.xsize, dims.ypos, dims.xpos);
+	refresh();
+}
+
+/*
+	Recalculates and adjusts the size and position of the week, main, text and com windows
+*/
 void resize_windows(WINDOW ** days, WINDOW ** mainwin, WINDOW ** textwin, WINDOW ** comwin, time_t selected) {
 	win_dims_t dims;
 	for (int i = 0; i < DAYS_IN_WEEK; i++){
@@ -163,22 +196,7 @@ void resize_windows(WINDOW ** days, WINDOW ** mainwin, WINDOW ** textwin, WINDOW
 	refresh();
 }
 
-void create_com_window(WINDOW ** comwin) {
-	int ymax, xmax;
-	getmaxyx(stdscr, ymax, xmax);
-	win_dims_t dims = dims_com_window();
-	*comwin = newwin(dims.ysize, dims.xsize, dims.ypos, dims.xpos);
-	refresh();
-}
 
-/*
-	Creates the file path and name for a given time and stores it in the filename buffer
-*/
-void date_filename(char *filename, time_t time) {
-	struct tm *time_obj;
-	time_obj = localtime(&time);
-	strftime(filename, DAY_NAME_SIZE, "entries/%F.md", time_obj);
-}
 
 /*
 	Reads a given day's entry data from file and puts it into the given buffer (given the buffer's size).
