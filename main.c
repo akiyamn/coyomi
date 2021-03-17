@@ -179,8 +179,12 @@ void create_com_window(WINDOW ** comwin) {
 */
 void date_filename(char *filename, time_t time) {
 	struct tm *time_obj;
+	char date_buffer[DAY_NAME_SIZE];
 	time_obj = localtime(&time);
-	strftime(filename, DAY_NAME_SIZE, "entries/%F.md", time_obj);
+	// Add the ENTRY_PATH to the start of the date name (ISO format)
+	strftime(date_buffer, DAY_NAME_SIZE, "/%F.md", time_obj);
+	strncpy(filename, ENTRY_PATH, PATH_MAX-DAY_NAME_SIZE);
+	strncat(filename, date_buffer, DAY_NAME_SIZE);
 }
 
 /*
@@ -189,7 +193,7 @@ void date_filename(char *filename, time_t time) {
 */
 int read_day(char *buffer, size_t buf_size, time_t selected){
 	FILE *fp;
-	char file_name[DAY_NAME_SIZE];
+	char file_name[PATH_MAX];
 	date_filename(file_name, selected);
 	if ((fp = fopen(file_name, "r"))) {
 		int i = 0;
@@ -238,7 +242,7 @@ void update_ui(WINDOW ** days, WINDOW ** mainwin, WINDOW ** textwin, time_t sele
 	flush the text buffer, then redraw appropriate UI elements.
 */
 void edit_date(WINDOW ** textwin, time_t selected, char *text_buffer) {
-	char filename[DAY_NAME_SIZE];
+	char filename[PATH_MAX];
 	date_filename(filename, selected);
 	int pid = fork();
 	refresh();

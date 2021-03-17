@@ -8,6 +8,7 @@
 #include <locale.h>
 #include <time.h>
 #include <unistd.h> 
+#include <limits.h>
 #include <sys/wait.h>
 #include <ncurses.h>
 
@@ -23,6 +24,7 @@
 // Will hard code these for now...
 #define TERMINAL "st"
 #define EDITOR "vim"
+#define ENTRY_PATH "/home/yui/Documents/coyomi"
 
 typedef struct win_dims_t {
     int ysize;
