@@ -26,8 +26,18 @@ time_t get_monday(time_t input) {
 */
 void date_filename(char *filename, time_t time) {
 	struct tm *time_obj;
+	char date_buffer[DAY_NAME_SIZE];
 	time_obj = localtime(&time);
-	strftime(filename, DAY_NAME_SIZE, "entries/%F.md", time_obj);
+	char prefix[50];
+	strftime(date_buffer, DAY_NAME_SIZE, "%F.md", time_obj);
+	if (ENTRY_PATH[0] == '~') { // Expand ~ to the home directory
+		strncpy(prefix, ENTRY_PATH, 50);
+		// Put the home directory, default folder and date filename into the buffer.
+		// Remove the ~ and / by starting the prefix string one character over
+		snprintf(filename,  PATH_MAX, "%s%s/%s", getenv("HOME"), prefix+(sizeof(char)), date_buffer);
+	} else { // No home directory, just treat as normal
+		snprintf(filename, PATH_MAX, "%s/%s", ENTRY_PATH, date_buffer);
+	}
 }
 
 /*
@@ -163,8 +173,6 @@ win_dims_t dims_com_window() {
 	Creates the command window, given a location to store it
 */
 void create_com_window(WINDOW ** comwin) {
-	int ymax, xmax;
-	getmaxyx(stdscr, ymax, xmax);
 	win_dims_t dims = dims_com_window();
 	*comwin = newwin(dims.ysize, dims.xsize, dims.ypos, dims.xpos);
 	refresh();
@@ -204,9 +212,9 @@ void resize_windows(WINDOW ** days, WINDOW ** mainwin, WINDOW ** textwin, WINDOW
 */
 int read_day(char *buffer, size_t buf_size, time_t selected){
 	FILE *fp;
-	char file_name[DAY_NAME_SIZE];
-	date_filename(file_name, selected);
-	if ((fp = fopen(file_name, "r"))) {
+	char filename[PATH_MAX];
+	date_filename(filename, selected);
+	if ((fp = fopen(filename, "r"))) {
 		int i = 0;
 		char c;
 		while (i < buf_size) {
@@ -253,7 +261,7 @@ void update_ui(WINDOW ** days, WINDOW ** mainwin, WINDOW ** textwin, time_t sele
 	flush the text buffer, then redraw appropriate UI elements.
 */
 void edit_date(WINDOW ** textwin, time_t selected, char *text_buffer) {
-	char filename[DAY_NAME_SIZE];
+	char filename[PATH_MAX];
 	date_filename(filename, selected);
 	int pid = fork();
 	refresh();
@@ -365,6 +373,7 @@ void ui_loop() {
 			case 'q': return; // Quit the program on 'q'
 			case KEY_RESIZE: // Triggered when the window resizes
 				clear();
+				printf("8");
 				resize_windows(days, &mainwin, &textwin, &comwin, selected);
 				break;
 			case 'e': edit_date(&textwin, selected, text_buffer); break; // Edit entry

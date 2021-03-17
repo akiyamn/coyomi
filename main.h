@@ -8,7 +8,9 @@
 #include <locale.h>
 #include <time.h>
 #include <unistd.h> 
+#include <limits.h> 
 #include <sys/wait.h>
+#include <sys/stat.h>
 #include <ncurses.h>
 
 #define DAYS_IN_WEEK 7
@@ -23,6 +25,7 @@
 // Will hard code these for now...
 #define TERMINAL "st"
 #define EDITOR "vim"
+#define ENTRY_PATH "~/Documents/coyomi"
 
 typedef struct win_dims_t {
     int ysize;
