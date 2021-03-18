@@ -23,7 +23,7 @@ make
 ```
 
 ## Usage
-coyomi is very basic at the moment and has limited functionality. However it is still usable.
+coyomi is very basic at the moment and has limited functionality, however it is still usable.
 
 ### Controls
 Controls are vi-like, but are simple enough to be used by someone not familiar with them.
@@ -64,6 +64,38 @@ The arrow keys mentioned above are treated as aliases to the letter descriptors 
 |`Y`|Forward n years|+365\*|
 
 >\*Note that in future, months will change between 28, 29, 30, 31 depending on the month and year selected. The same goes for years, which will eventually take leap years into account.
+
+### Editor
+
+While coyomi does not come with its own editor, it uses external editors such as: vim, nano, gedit etc... to edit date entries. This makes coyomi quite modular, allowing you to chose your favourite editor rather than bake in a subpar one. 
+coyomi saves its files in plain Markdown format (`.md`) allowing other programs to use existing date entries (e.g. pandoc, git etc...). At the moment, coyomi does not render Markdown in its UI.
+
+## Alerts
+
+coyomi has an experimental notification/alerts feature.
+
+On the program's startup, just today's page (for now) is read for a special notification comment somewhere within the document.
+A notification takes the following form:
+```markdown
+<!-- (urgency-level) alert-message -->
+```
+
+The current urgency levels are as follows:
+- low
+- normal
+- high\*
+- critical\*
+
+*\*These act as the same level*
+
+Replace `alert-message` with your own message.
+
+### Example
+```markdown
+<!-- (critical) Finish Assignment 1 tomorrow! -->
+```
+
+
 
 
 <!-- - `1-7` Select between the seven days of the week (1 = Monday etc...) -->
