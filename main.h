@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <math.h>
 #include <locale.h>
 #include <time.h>
@@ -17,6 +18,8 @@
 #define DAY_NAME_SIZE 50
 #define COMMAND_SIZE 50
 #define MAIN_TEXT_SIZE 5000
+#define NOTIFY_TEXT_SIZE 256
+#define NOTIFY_URGENCY_SIZE 16
 #define ASCII_DIGIT_START 48
 #define SECONDS_IN_DAY 86400
 #define LAYOUT_X_RATIO 0.25

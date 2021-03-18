@@ -348,6 +348,65 @@ int input_vi_command(WINDOW *comwin, int* command_buffer, int first_char) {
 }
 
 /*
+	Takes a string of most size n and makes it lower case
+*/
+void strlower(char* string, size_t n) {
+	for (int i = 0; i < n; i++){
+		string[i] = tolower(string[i]);
+	}
+}
+
+
+/*
+	Sends a notify-send notification with given text provided an urgency level.
+	0 = low, 1 = normal, 2 = critical
+*/
+void notify(int level, char* text) {
+	const char* urgency_strings[] = {"low", "normal", "critical"};
+	int pid = fork();
+	if (pid == 0) {
+		execlp("notify-send", "notify-send", "-u", urgency_strings[level], text, NULL);
+	} else if (pid == -1) {
+		printw("An error occurred opening the process.");
+		refresh();
+	} else {
+		int status;
+		waitpid(pid, &status, 0);
+	}
+}
+
+/*
+	Check and alert any notifications on a given day. This alert is scanned from the day's text in a special kind of alert comment.
+	Activates the alert via notify-send only at the moment
+*/
+void check_notifs(time_t day) {
+	char text_buffer[MAIN_TEXT_SIZE];
+	if (read_day(text_buffer, MAIN_TEXT_SIZE, day)) {
+		int line_matches = 0;
+		char notify_string[NOTIFY_TEXT_SIZE];
+		char level_string[NOTIFY_URGENCY_SIZE];
+
+		// Match: "<!-- (urgency-level) alert-text -->" and provide both strings
+		line_matches = sscanf(text_buffer, "%*[^<]<!-- (%[^)]) %[^-] -->%*[\n]", level_string, notify_string);
+
+		// Compare the level provided in the comment and convert it to a number
+		strlower(level_string, 20);
+		if (line_matches == 2) {
+			int level = 60;
+			printf("low %d", strcmp(level_string, "low"));
+			if (!strcmp(level_string, "low")) level = 0;
+			else if (!strcmp(level_string, "normal")) level = 1;
+			else if (!strcmp(level_string, "high")) level = 2;
+			else if (!strcmp(level_string, "critical")) level = 2;
+			notify(level, notify_string);
+		}
+		
+	}
+	
+}
+
+
+/*
 	The main UI loop which renders the ncurses UI and handles character input
 */
 void ui_loop() {
@@ -360,13 +419,17 @@ void ui_loop() {
 	WINDOW * textwin;
 	WINDOW * comwin;
 
+	// Get the time
 	time(&today_raw);
 	selected = today_raw;	
 
+	// Initialise UI
 	create_week_window(days, selected);
 	create_main_window(&mainwin, &textwin, selected);
 	draw_date_entry(&textwin, selected, text_buffer);
 	create_com_window(&comwin);
+	check_notifs(today_raw);
+	
 	while (true) { // Main loop
 		int c = getch();
 		switch(c) {
@@ -396,7 +459,6 @@ void ui_loop() {
 int main() {
 	setlocale(LC_ALL, "");
 	initscr();
-	// cbreak();	
 	noecho();
 	curs_set(0);
 	keypad(stdscr, true);
